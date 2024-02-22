@@ -1,2 +1,2 @@
-# github_dashboard_feed
-GitHub Dashboard Feed in your Terminal! (written in Rust)
+# GitHub Dashboard Feed
+Get your [GitHub Dashboard Feed](https://github.com/dashboard-feed) in your Terminal! (written in Rust)
