@@ -66,6 +66,8 @@ async fn main() -> Result<(), Error> {
 
     let users: Vec<Event> = response.json().await?;
 
+    println!("{:=<70}", "");
+
     for user in users {
         let event = if user.r#type == "WatchEvent" {
             "starred"
@@ -90,8 +92,10 @@ async fn main() -> Result<(), Error> {
         let actor = format!("{:15} ({:2})", user.actor.display_login.green(), actor_link);
         let repo = format!("{:20} ({:>2})", user.repo.name.red(), repo_link);
 
-        println!("{:<20} {:<10} {:<60}", &actor, event.blue(), &repo,)
+        println!(" => {:<40} | {:<10} | {:<60} ", &actor, event.blue(), &repo,)
     }
+
+    println!("{:=<70}", "");
 
     Ok(())
 }
