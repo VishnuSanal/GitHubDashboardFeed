@@ -70,11 +70,11 @@ async fn main() -> Result<(), Error> {
         let actor_url = format!("https://github.com/{}", &user.actor.display_login);
         let repo_url = format!("https://github.com/{}", &user.repo.name);
 
-        let actor_link = Link::new("link", &actor_url);
-        let repo_link = Link::new("link", &repo_url);
+        let actor_link = Link::new("", &actor_url);
+        let repo_link = Link::new("", &repo_url);
 
-        let actor = format!("{:15} ({:5})", user.actor.display_login.green(), actor_link);
-        let repo = format!("{:20} ({:>5})", user.repo.name.red(), repo_link);
+        let actor = format!("{:15} ({:2})", user.actor.display_login.green(), actor_link);
+        let repo = format!("{:20} ({:>2})", user.repo.name.red(), repo_link);
 
         println!("{:<20} {:<10} {:<60}", &actor, event.blue(), &repo,)
     }
