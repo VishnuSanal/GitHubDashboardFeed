@@ -1,5 +1,4 @@
-use std::process::Command;
-
+use std::io::Write;
 use colored::*;
 use reqwest::Error;
 use reqwest::header::USER_AGENT;
@@ -42,27 +41,22 @@ struct RepoDetails {
 async fn main() -> Result<(), Error> {
     let args: Vec<_> = std::env::args().collect();
 
+    let mut username = String::new();
+
     if args.len() < 2 {
-        println!("No username provided, falling back to global Git username");
+        println!("No username provided in command line arguments!");
+        print!("Please enter your GitHub username: ");
+        std::io::stdout().flush().unwrap();
 
-        let output = Command::new("git config --global user.name")
-            .output()
-            .expect("No Git username set");
-
-        if output.status.success() {
-            let username = String::from_utf8(output.stdout);
-            println!("{:?}", username);
-        } else {
-            panic!("Please provide the username as a command line argument!");
-        }
+        std::io::stdin().read_line(&mut username).unwrap();
+    } else {
+        username = args[1].to_string();
     }
 
     let request_url = format!(
         "https://api.github.com/users/{user}/received_events",
-        user = args[1]
+        user = username
     );
-
-    // println!("{}", request_url);
 
     let response = reqwest::Client::new()
         .get(&request_url)
