@@ -1,8 +1,8 @@
 use std::process::Command;
 
 use colored::*;
-use reqwest::header::USER_AGENT;
 use reqwest::Error;
+use reqwest::header::USER_AGENT;
 use serde::Deserialize;
 use terminal_link::Link;
 
@@ -16,7 +16,7 @@ struct Actor {
 struct Repo {
     // id: u32,
     name: String,
-    // url: String,
+    url: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -26,6 +26,16 @@ struct Event {
     actor: Actor,
     repo: Repo,
     // created_at: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct RepoDetails {
+    // id: u32,
+    // name: String,
+    description: Option<String>,
+    // html_url: String,
+    stargazers_count: u32,
+    language: Option<String>,
 }
 
 #[tokio::main]
@@ -66,9 +76,27 @@ async fn main() -> Result<(), Error> {
 
     let users: Vec<Event> = response.json().await?;
 
-    println!("{:=<70}", "");
+    println!("{:-<100}", "");
 
     for user in users {
+        let repo_response = reqwest::Client::new()
+            .get(&user.repo.url)
+            .header(USER_AGENT, "github_dashboard_feed")
+            .send()
+            .await?;
+
+        let mut repo_details: RepoDetails;
+
+        if repo_response.status().is_success() {
+            repo_details = repo_response.json().await?;
+        } else {
+            repo_details = RepoDetails {
+                description: Some("not found".to_string()),
+                stargazers_count: 0,
+                language: Some("not found".to_string()),
+            };
+        }
+
         let event = if user.r#type == "WatchEvent" {
             "starred"
         } else if user.r#type == "ReleaseEvent" {
@@ -89,13 +117,27 @@ async fn main() -> Result<(), Error> {
         let actor_link = Link::new("", &actor_url);
         let repo_link = Link::new("", &repo_url);
 
-        let actor = format!("{:15} ({:2})", user.actor.display_login.green(), actor_link);
-        let repo = format!("{:20} ({:>2})", user.repo.name.red(), repo_link);
+        let repo_lang = repo_details.language.expect("");
+        let repo_stars = repo_details.stargazers_count.to_string();
 
-        println!(" => {:<40} | {:<10} | {:<60} ", &actor, event.blue(), &repo,)
+        let actor = format!("{} ({:2})", user.actor.display_login.red(), actor_link);
+
+        let repo = format!(
+            "{} ( {}) ( {}) ({:>2})",
+            user.repo.name.red(),
+            repo_stars.trim().purple(),
+            repo_lang.trim().bright_blue(),
+            repo_link
+        );
+
+        let repo_desc = repo_details.description.get_or_insert("not found".to_string());
+
+        println!(" => {} {} {}", &actor, event.blue(), &repo);
+
+        println!("\t=> {:<100}", &repo_desc.bright_green());
+
+        println!("{:-<100}", "");
     }
-
-    println!("{:=<70}", "");
 
     Ok(())
 }
