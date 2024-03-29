@@ -1,4 +1,5 @@
 use std::io::Write;
+
 use colored::*;
 use reqwest::Error;
 use reqwest::header::USER_AGENT;
@@ -42,6 +43,7 @@ async fn main() -> Result<(), Error> {
     let args: Vec<_> = std::env::args().collect();
 
     let mut username = String::new();
+    let mut auth_token = String::new();
 
     if args.len() < 2 {
         println!("No username provided in command line arguments!");
@@ -49,8 +51,14 @@ async fn main() -> Result<(), Error> {
         std::io::stdout().flush().unwrap();
 
         std::io::stdin().read_line(&mut username).unwrap();
+
+        username = username.trim().to_string();
     } else {
         username = args[1].to_string();
+
+        if args.len() > 2 {
+            auth_token = args[2].to_string();
+        }
     }
 
     let request_url = format!(
@@ -58,13 +66,20 @@ async fn main() -> Result<(), Error> {
         user = username
     );
 
-    let response = reqwest::Client::new()
+    let mut response_builder = reqwest::Client::new()
         .get(&request_url)
-        .header(USER_AGENT, "github_dashboard_feed")
+        .header(USER_AGENT, format!("github_dashboard_feed_{}", &username));
+
+    if !auth_token.is_empty() {
+        response_builder = response_builder.bearer_auth(&auth_token);
+    }
+
+    let response = response_builder
         .send()
         .await?;
 
     if !response.status().is_success() {
+        println!("You are probably getting rate limited, please pass a GitHub token with \"notifications\" permissions as the second command line argument. For more details, visit: https://github.com/VishnuSanal/GitHubDashboardFeed/issues/2");
         panic!("Something went wrong!");
     }
 
@@ -73,9 +88,15 @@ async fn main() -> Result<(), Error> {
     println!("{:-<100}", "");
 
     for user in users {
-        let repo_response = reqwest::Client::new()
+        let mut repo_response_builder = reqwest::Client::new()
             .get(&user.repo.url)
-            .header(USER_AGENT, "github_dashboard_feed")
+            .header(USER_AGENT, format!("github_dashboard_feed_{}", &username));
+
+        if !auth_token.is_empty() {
+            repo_response_builder = repo_response_builder.bearer_auth(&auth_token);
+        }
+
+        let repo_response = repo_response_builder
             .send()
             .await?;
 
@@ -85,9 +106,9 @@ async fn main() -> Result<(), Error> {
             repo_details = repo_response.json().await?;
         } else {
             repo_details = RepoDetails {
-                description: Some("not found".to_string()),
+                description: Some("Description not found. You are probably getting rate limited, please pass a GitHub token with \"notifications\" permissions as the second command line argument. For more details, visit: https://github.com/VishnuSanal/GitHubDashboardFeed/issues/2".to_string()),
                 stargazers_count: 0,
-                language: Some("not found".to_string()),
+                language: Some("null".to_string()),
             };
         }
 
@@ -111,7 +132,7 @@ async fn main() -> Result<(), Error> {
         let actor_link = Link::new("", &actor_url);
         let repo_link = Link::new("", &repo_url);
 
-        let repo_lang = repo_details.language.expect("");
+        let repo_lang = repo_details.language.get_or_insert("null".to_string());
         let repo_stars = repo_details.stargazers_count.to_string();
 
         let actor = format!("{} ({:2})", user.actor.display_login.red(), actor_link);
