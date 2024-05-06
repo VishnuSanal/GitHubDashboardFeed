@@ -1,42 +1,17 @@
 use std::io::Write;
 
 use colored::*;
-use reqwest::Error;
 use reqwest::header::USER_AGENT;
-use serde::Deserialize;
+use reqwest::Error;
 use terminal_link::Link;
 
-#[derive(Deserialize, Debug)]
-struct Actor {
-    // id: u32,
-    display_login: String,
-}
+#[path = "model/Event.rs"]
+mod event;
+use event::Event;
 
-#[derive(Deserialize, Debug)]
-struct Repo {
-    // id: u32,
-    name: String,
-    url: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct Event {
-    // id: String,
-    r#type: String,
-    actor: Actor,
-    repo: Repo,
-    // created_at: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct RepoDetails {
-    // id: u32,
-    // name: String,
-    description: Option<String>,
-    // html_url: String,
-    stargazers_count: u32,
-    language: Option<String>,
-}
+#[path = "model/RepoDetails.rs"]
+mod repo_details;
+use repo_details::RepoDetails;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -74,9 +49,7 @@ async fn main() -> Result<(), Error> {
         response_builder = response_builder.bearer_auth(&auth_token);
     }
 
-    let response = response_builder
-        .send()
-        .await?;
+    let response = response_builder.send().await?;
 
     if !response.status().is_success() {
         println!("You are probably getting rate limited, please pass a GitHub token with \"notifications\" permissions as the second command line argument. For more details, visit: https://github.com/VishnuSanal/GitHubDashboardFeed/issues/2");
@@ -96,9 +69,7 @@ async fn main() -> Result<(), Error> {
             repo_response_builder = repo_response_builder.bearer_auth(&auth_token);
         }
 
-        let repo_response = repo_response_builder
-            .send()
-            .await?;
+        let repo_response = repo_response_builder.send().await?;
 
         let mut repo_details: RepoDetails;
 
@@ -145,7 +116,9 @@ async fn main() -> Result<(), Error> {
             repo_link
         );
 
-        let repo_desc = repo_details.description.get_or_insert("not found".to_string());
+        let repo_desc = repo_details
+            .description
+            .get_or_insert("not found".to_string());
 
         println!(" => {} {} {}", &actor, event.blue(), &repo);
 
